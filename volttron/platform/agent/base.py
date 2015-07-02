@@ -336,7 +336,10 @@ class BaseAgent(AgentBase):
         except zmq.error.Again:
             return
         try:
-            for prefix, handlers in self._subscriptions.iteritems():
+            # Iterate over items() rather than iteritems() so that
+            # handlers may subscribe and unsubscribe, which changes
+            # the size of the _subscriptions dictionary.
+            for prefix, handlers in self._subscriptions.items():
                 if topic.startswith(prefix):
                     for callback, test in handlers:
                         if not callback:
@@ -400,7 +403,7 @@ class BaseAgent(AgentBase):
             if handlers:
                 remove_handler(prefix, handlers)
         else:
-            for prefix, handlers in self._subscriptions.iteritems():
+            for prefix, handlers in self._subscriptions.items():
                 remove_handler(prefix, handlers)
 
     def unsubscribe_all(self, prefix):
