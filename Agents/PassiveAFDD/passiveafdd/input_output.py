@@ -92,6 +92,7 @@ def result_writer(contents):
             os.makedirs(_dir)
         now = datetime.date.today()
         file_path = os.path.join(_dir, "AFDD_Results({ts}).csv".format(ts=now))
+        print ("Output file: ", file_path)
         ofile = open(file_path, 'w')
         outs = csv.writer(ofile, dialect='excel')
         writer = csv.DictWriter(ofile, fieldnames=["Timestamp", "OAE1",

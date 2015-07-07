@@ -191,7 +191,7 @@ def passiveafdd(config_path, **kwargs):
                        not self.file_path.endswith('.csv')):
                         _log.info('File must be in CSV format.')
                         return
-                    if self.input_file == "CONFIG_ERROR":
+                    if self.file_path is None and self.input_file == "CONFIG_ERROR":
                         _log.info(
                             'Check configuration file and add input_file '
                             'parameter as file path to data file')
@@ -200,7 +200,7 @@ def passiveafdd(config_path, **kwargs):
                         self.file_path = self.file
                     self.bldg_data = read_oae_pandas(self.file_path,
                                                      self.names)
-                self.process_data()
+                    self.process_data()
             except:
                 _log.exception('Error:' + str(sys.exc_info()[0]))
 
@@ -859,3 +859,4 @@ if __name__ == '__main__':
         sys.exit(main())
     except KeyboardInterrupt:
         pass
+
