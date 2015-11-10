@@ -56,11 +56,13 @@
 from __future__ import absolute_import
 
 import logging
+from pprint import pprint
 import sys
 import time
 
 import gevent
 
+from . polo import Polo
 from . masspublisher import MassPublisher
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
@@ -79,16 +81,13 @@ class MarcoPolo(Agent):
 
     def _onmessage(self, peer, sender, bus, topic, headers, message):
         '''Handle incoming messages on the bus.'''
-        if self._config_as == 'polo':
-            _log.debug('Polo received headers {}'.format(headers))
-            _log.debug('starting polo')
+
+        if self._ispolo:
+            retmessage = headers
+            retmessage['clock']=time.clock()
             self.vip.pubsub.publish(peer='pubsub',
                                 topic=self._publish_to,
-                                message=headers).get(timeout=2)
-        else:
-            receive_time = time.clock()
-            self._roundtrips.append(receive_time - self._marcostart)
-            _log.debug(self._roundtrips)
+                                message=retmessage)
 
     @property
     def _ismarco(self):
@@ -112,15 +111,20 @@ class MarcoPolo(Agent):
             raise Exception('Invalid subscribe-to in config file.')
         if not self._publish_to:
             raise Exception('Invalid publish-to in config file.')
-        _log.info("id: {} config-as: {} pub-to: {} sub-to: {}"
-                  .format(self._agent_id, self._config_as, self._publish_to,
-                          self._subscribe_to))
 
-        # if configed as marco then the the messages are being sent from it
-        if self._ismarco:
+        _log.info("id: {} config-as: {} pub-to: {} sub-to: {}"
+              .format(self._agent_id, self._config_as, self._publish_to,
+                      self._subscribe_to))
+
+        if self._ispolo:
+            self.agent = Polo(self, self._subscribe_to, self._publish_to)
+            gevent.spawn(self.agent.core.run)
+        else:
             self._num_publishes = self._config.get('num-publishes', 5)
             self._num_bytes = self._config.get('message-size-bytes', 1)
             self._mass_publisher = None
+
+
 
 #     def do_marco(self):
 #         self._marcostart = time.clock()
@@ -146,7 +150,9 @@ class MarcoPolo(Agent):
                                       self._onmessage)
 #
     def _completed(self, statistics):
-        _log.debug(statistics)
+        pprint(statistics)
+        self._mass_publisher.core.stop()
+
 
 def main(argv=sys.argv):
     '''Main method called by the eggsecutable.'''
