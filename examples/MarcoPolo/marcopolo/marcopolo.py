@@ -59,6 +59,8 @@ import logging
 import sys
 import time
 
+import gevent
+
 from . masspublisher import MassPublisher
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
@@ -70,28 +72,29 @@ _log = logging.getLogger(__name__)
 
 class MarcoPolo(Agent):
     '''An agent based marco polo pool game.
-    
+
     The MarcoPolo agent can be constructed as either a marco or a polo agent.
-    A MarcoPolo can be 
+    A MarcoPolo can be
     '''
-        
+
     def _onmessage(self, peer, sender, bus, topic, headers, message):
         '''Handle incoming messages on the bus.'''
         if self._config_as == 'polo':
+            _log.debug('Polo received headers {}'.format(headers))
             _log.debug('starting polo')
-            self.vip.pubsub.publish(peer='pubsub', 
-                                topic=self._publish_to, 
-                                message=self._send_message).get(timeout=2)
+            self.vip.pubsub.publish(peer='pubsub',
+                                topic=self._publish_to,
+                                message=headers).get(timeout=2)
         else:
             receive_time = time.clock()
             self._roundtrips.append(receive_time - self._marcostart)
             _log.debug(self._roundtrips)
-    
+
     @property
     def _ismarco(self):
         return self._config_as == 'marco'
-    
-    @property    
+
+    @property
     def _ispolo(self):
         return self._config_as == 'polo'
 
@@ -102,7 +105,7 @@ class MarcoPolo(Agent):
         self._config_as = self._config['config-as']
         self._publish_to = self._config['pubblish-to']
         self._subscribe_to = self._config['subscribe-to']
-        
+
         if self._config_as not in ('marco', 'polo'):
             raise Exception('config-as must be either marco or polo in config file.')
         if not self._subscribe_to:
@@ -112,32 +115,36 @@ class MarcoPolo(Agent):
         _log.info("id: {} config-as: {} pub-to: {} sub-to: {}"
                   .format(self._agent_id, self._config_as, self._publish_to,
                           self._subscribe_to))
-        
+
         # if configed as marco then the the messages are being sent from it
         if self._ismarco:
             self._num_publishes = self._config.get('num-publishes', 5)
             self._num_bytes = self._config.get('message-size-bytes', 1)
-            self._mass_publisher = None            
-            
+            self._mass_publisher = None
+
 #     def do_marco(self):
 #         self._marcostart = time.clock()
-#         self.vip.pubsub.publish(peer='pubsub', 
-#                                 topic=self._publish_to, 
+#         self.vip.pubsub.publish(peer='pubsub',
+#                                 topic=self._publish_to,
 #                                 message=self._send_message).get(timeout=2)
-#                                 
+#
     @Core.receiver('onsetup')
     def setup(self, sender, **kwargs):
         if self._ismarco:
-            self._mass_publisher = MassPublisher(self.vip.pubsub)
-            self._mass_publisher.publish(self._publish_to, self._subscribe_to, 
+            _log.debug('Configured as marco')
+            self._mass_publisher = MassPublisher(self)
+            self._mass_publisher.publish(self._publish_to, self._subscribe_to,
                                          self._num_bytes, self._num_publishes,
                                          self._completed)
-#         self.vip.pubsub.subscribe('pubsub', self._subscribe_to, self._onmessage)
-#         
-#         if self._config_as == 'marco':
-#             self.core.periodic(2, self.do_marco, wait=None)
-#         _log.info("send message: {}".format(self._send_message))
-#         self._agent_id = self._config['agentid']
+            gevent.spawn(self._mass_publisher.core.run)
+
+        if self._ispolo:
+            _log.debug('Configured as polo')
+            _log.debug('Subscribed to topic: \'{}\''.format(self._subscribe_to))
+            self.vip.pubsub.subscribe('pubsub',
+                                      self._subscribe_to,
+                                      self._onmessage)
+#
     def _completed(self, statistics):
         _log.debug(statistics)
 
