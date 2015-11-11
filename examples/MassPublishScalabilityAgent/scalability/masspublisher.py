@@ -58,7 +58,7 @@ from __future__ import absolute_import
 import json
 import logging
 import sys
-from time import clock
+from time import time
 
 import gevent
 
@@ -84,6 +84,7 @@ class MassPublisher(BasicAgent):
     @Core.receiver('onstart')
     def on_start(self, sender, **kwargs):
         self.outstream = open(self.outputfile, 'w')
+        self.outstream.write('Test begins: {}'.format(time()))
         self.vip.pubsub.subscribe(peer='pubsub',
                                   prefix='control/publisher',
                                   callback=self.oncontrol)
@@ -96,6 +97,7 @@ class MassPublisher(BasicAgent):
     @Core.receiver('onstop')
     def on_stop(self, sender, **kwargs):
         _log.debug('Stoping agent now!')
+        self.outstream.write('Test ends: {}\n'.format(time()))
         self.outstream.close()
 
     def oncontrol(self, peer, sender, bus, topic, headers, message):
@@ -105,7 +107,7 @@ class MassPublisher(BasicAgent):
         built_bytes = '1'*self.num_bytes
         for x in range(self.num_times):
             headers = {'idnum': x,
-                       'started': clock()}
+                       'started': time()}
             self.vip.pubsub.publish(peer='pubsub',
                                     headers=headers,
                                     topic=self.pubtopic,

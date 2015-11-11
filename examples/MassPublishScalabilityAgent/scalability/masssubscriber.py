@@ -58,7 +58,7 @@ from __future__ import absolute_import
 import json
 import logging
 import sys
-from time import clock
+from time import time
 
 import gevent
 
@@ -79,7 +79,7 @@ class MassSubscriber(BasicAgent):
 
     def onmessage(self, peer, sender, bus, topic, headers, message):
         '''Handle incoming messages on the bus.'''
-        finishtime=clock()
+        finishtime=time()
         headers['finished']=finishtime
         self.outstream.write("{}\n".format(json.dumps(headers)))
         id = int(headers['idnum'])
@@ -87,12 +87,17 @@ class MassSubscriber(BasicAgent):
             self.vip.pubsub.publish(peer='pubsub',
                                     topic='control/publisher',
                                     message='complete')
+            self.outstream.write('End Receiving: {}\n'
+                             .format(time()))
+
             self.parent.core.stop()
         #_log.debug('Finishing {}'.format(len(message)))
 
     def oncontrol(self, peer, sender, bus, topic, headers, message):
         self.num_messages = int(message)
         _log.debug('oncontrol: {}'.format(self.num_messages))
+        self.outstream.write('Begin Receiving: {} {}\n'
+                             .format(self.num_messages, time()))
 
     @Core.receiver('onstop')
     def do_onstop(self, sender, **kwargs):

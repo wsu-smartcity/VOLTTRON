@@ -122,9 +122,15 @@ class Scalability(Agent):
     @Core.receiver('onstart')
     def startagent(self, sender, **kwargs):
         gevent.spawn(self.agent.core.run)
+        if self._ispublisher:
+            self.vip.rpc.call('control',
+                              'stats.enable').get(timeout=2)
 
     @Core.receiver('onstop')
     def stopagent(self, sender, **kwargs):
+        if self._ispublisher:
+            self.vip.rpc.call('control',
+                              'stats.disable').get(timeout=2)
         self.agent.core.stop()
 
 def main(argv=sys.argv):
