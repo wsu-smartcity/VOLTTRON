@@ -58,7 +58,7 @@ from __future__ import absolute_import
 import logging
 import os
 import sys
-import time
+from time import time
 
 import gevent
 
@@ -116,6 +116,7 @@ class Scalability(Agent):
         else:
             num_times = self.config.get('num-publishes', 5)
             num_bytes = self.config.get('message-size-bytes', 1)
+            self.num_times = num_times
             self.agent = MassPublisher(self, self.publish_to, datafile,
                                num_bytes, num_times)
 #
@@ -123,14 +124,19 @@ class Scalability(Agent):
     def startagent(self, sender, **kwargs):
         gevent.spawn(self.agent.core.run)
         if self._ispublisher:
+            self.startagent = time()
             self.vip.rpc.call('control',
                               'stats.enable').get(timeout=2)
 
     @Core.receiver('onstop')
     def stopagent(self, sender, **kwargs):
         if self._ispublisher:
+            self.stopagent = time()
             self.vip.rpc.call('control',
                               'stats.disable').get(timeout=2)
+            _log.debug('total time to publish {} msgs is {}'
+                       .format(self.num_times,
+                               self.stopagent- self.startagent))
         self.agent.core.stop()
 
 def main(argv=sys.argv):
