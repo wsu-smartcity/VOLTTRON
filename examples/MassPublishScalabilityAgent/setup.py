@@ -69,7 +69,7 @@ setup(
     packages = packages,
     entry_points = {
         'setuptools.installation': [
-            'eggsecutable = ' + package + '.marcopolo:main',
+            'eggsecutable = ' + package + '.scalability:main',
         ]
     }
 )

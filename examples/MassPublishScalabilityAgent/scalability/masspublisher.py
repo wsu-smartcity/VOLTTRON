@@ -55,7 +55,9 @@
 
 from __future__ import absolute_import
 
+import json
 import logging
+import sys
 from time import clock
 
 import gevent
@@ -63,97 +65,49 @@ import gevent
 from volttron.platform.vip.agent import BasicAgent, Core, RPC
 from volttron.platform.agent import utils
 
+
 utils.setup_logging()
 _log = logging.getLogger(__name__)
 
 class MassPublisher(BasicAgent):
 
-    def __init__(self, parent):
+    def __init__(self, parent, pubtopic, outputfile,
+                 num_bytes, num_times):
+        super(MassPublisher, self).__init__()
         self.parent = parent
         self.vip = parent.vip
-        super(MassPublisher, self).__init__()
-        self._executing = False
-        self._start_time = None
-        self._finish_time = None
-        self._finish_status = []
-        self._received_async = []
-        self._result_dict = {}
-        self._agent_started = False
-        self._operating_context = {
-                                   'publish_topic': None,
-                                   'response_topic': None,
-                                   'num_bytes': None,
-                                   'num_times': None,
-                                   'completion_callback': None}
-
+        self.pubtopic = pubtopic
+        self.num_bytes = num_bytes
+        self.num_times = num_times
+        self.outputfile = outputfile
 
     @Core.receiver('onstart')
-    def dostartthings(self, sender, **kwargs):
-        self._agent_started = True
-
-        if self._operating_context['completion_callback']:
-            #start publishing things
-            self._do_mass_publish()
-
-
-
-    def _do_mass_publish(self):
-        response_topic = self._operating_context['response_topic']
-        _log.debug('Subscribing to the response topic {} with _onmessage'
-                   .format(response_topic))
+    def on_start(self, sender, **kwargs):
+        self.outstream = open(self.outputfile, 'w')
         self.vip.pubsub.subscribe(peer='pubsub',
-                               prefix=response_topic,
-                               callback=self._onmessage)
+                                  prefix='control/publisher',
+                                  callback=self.oncontrol)
 
-        _log.debug('Setting up run results dictionary')
+        self.vip.pubsub.publish(peer='pubsub',
+                                topic='control/subscriber',
+                                message=self.num_times)
+        self.start_publishing()
 
+    @Core.receiver('onstop')
+    def on_stop(self, sender, **kwargs):
+        _log.debug('Stoping agent now!')
+        self.outstream.close()
 
-        publish_topic = self._operating_context['publish_topic']
-        num_bytes = self._operating_context['num_bytes']
-        num_times = self._operating_context['num_times']
+    def oncontrol(self, peer, sender, bus, topic, headers, message):
+        self.parent.core.stop()
 
-        self._results_dict = {}
-        # Setup metadata about what is going to be sent.
-        for x in range(num_times):
-            self._result_dict[x] = {'idnum': x,
-                                    'started': -1,
-                                    'finished': -1,
-                                    'eagains': 0}
-
-        asyncResults = []
-        built_bytes = '1'*num_bytes
-        _log.debug('Starting publishes result')
-        for x in range(num_times):
-            headers = {'idnum': x}
-
-            result = self.vip.pubsub.publish(peer='pubsub',
-                              headers=headers,
-                              topic=publish_topic,
-                              message=built_bytes)
-
-            asyncResults.append(result)
-            _log.debug('Result loaded')
-
-        _log.debug('Done with _do_mass_publish')
-
-
-    @RPC.export
-    def publish(self, publish_topic, response_topic, num_bytes, num_times,
-                complete_callback):
-
-        self._operating_context = {
-                                   'publish_topic': publish_topic,
-                                   'response_topic': response_topic,
-                                   'num_bytes': num_bytes,
-                                   'num_times': num_times,
-                                   'completion_callback': complete_callback}
-
-        # if the agent has already started then do it, otherwise
-        # let the start method call the mass publish
-        if self._agent_started:
-            self._do_mass_publish()
-
-
-    def _onmessage(self, peer, sender, bus, topic, headers, message):
-        '''Handle incoming messages on the bus.'''
-        self._received_async.append((headers, message))
+    def start_publishing(self):
+        built_bytes = '1'*self.num_bytes
+        for x in range(self.num_times):
+            headers = {'idnum': x,
+                       'started': clock()}
+            self.vip.pubsub.publish(peer='pubsub',
+                                    headers=headers,
+                                    topic=self.pubtopic,
+                                    message=built_bytes)
+            self.outstream.write("{}\n".format(json.dumps(headers)))

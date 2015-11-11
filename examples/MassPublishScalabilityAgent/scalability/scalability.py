@@ -56,14 +56,14 @@
 from __future__ import absolute_import
 
 import logging
-from pprint import pprint
+import os
 import sys
 import time
 
 import gevent
 
-from . polo import Polo
 from . masspublisher import MassPublisher
+from . masssubscriber import MassSubscriber
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
 from volttron.platform.messaging import headers as headers_mod
@@ -72,92 +72,65 @@ utils.setup_logging()
 _log = logging.getLogger(__name__)
 
 
-class MarcoPolo(Agent):
+class Scalability(Agent):
     '''An agent based marco polo pool game.
 
     The MarcoPolo agent can be constructed as either a marco or a polo agent.
     A MarcoPolo can be
     '''
-
-    def _onmessage(self, peer, sender, bus, topic, headers, message):
-        '''Handle incoming messages on the bus.'''
-
-        if self._ispolo:
-            retmessage = headers
-            retmessage['clock']=time.clock()
-            self.vip.pubsub.publish(peer='pubsub',
-                                topic=self._publish_to,
-                                message=retmessage)
+    @property
+    def _ispublisher(self):
+        return self.config_as == 'publisher'
 
     @property
-    def _ismarco(self):
-        return self._config_as == 'marco'
-
-    @property
-    def _ispolo(self):
-        return self._config_as == 'polo'
+    def _issubscriber(self):
+        return self.config_as == 'subscriber'
 
     def __init__(self, config_path, **kwargs):
-        super(MarcoPolo, self).__init__(**kwargs)
-        self._config = utils.load_config(config_path)
-        self._agent_id = self._config['agentid']
-        self._config_as = self._config['config-as']
-        self._publish_to = self._config['pubblish-to']
-        self._subscribe_to = self._config['subscribe-to']
+        super(Scalability, self).__init__(**kwargs)
+        self.config = utils.load_config(config_path)
+        self.agent_id = self.config['agentid']
+        self.config_as = self.config['config-as']
+        self.publish_to = self.config.get('pubblish-to', None)
+        self.subscribe_to = self.config.get('subscribe-to', None)
+        self.datafile = self.config.get('outfile', None)
 
-        if self._config_as not in ('marco', 'polo'):
-            raise Exception('config-as must be either marco or polo in config file.')
-        if not self._subscribe_to:
-            raise Exception('Invalid subscribe-to in config file.')
-        if not self._publish_to:
+        if self.config_as not in ('publisher', 'subscriber'):
+            raise Exception('config-as must be either publisher '
+                            + 'or subscriber in config file.')
+        if self.config_as == 'publisher' and not self.publish_to:
             raise Exception('Invalid publish-to in config file.')
+        if self.config_as == 'subscriber' and not self.subscribe_to:
+            raise Exception('Invalid subscribe-to in config file.')
+        if not self.datafile:
+            raise Exception('Invalid datafile passed.')
 
         _log.info("id: {} config-as: {} pub-to: {} sub-to: {}"
-              .format(self._agent_id, self._config_as, self._publish_to,
-                      self._subscribe_to))
-
-        if self._ispolo:
-            self.agent = Polo(self, self._subscribe_to, self._publish_to)
-            gevent.spawn(self.agent.core.run)
+              .format(self.agent_id, self.config_as, self.publish_to,
+                      self.subscribe_to))
+        datafile = os.path.join(os.environ['VOLTTRON_HOME'], self.datafile)
+        _log.debug("datafile is {}".format(datafile))
+        if self._issubscriber:
+            self.agent = MassSubscriber(self, datafile,
+                                        self.subscribe_to)
         else:
-            self._num_publishes = self._config.get('num-publishes', 5)
-            self._num_bytes = self._config.get('message-size-bytes', 1)
-            self._mass_publisher = None
-
-
-
-#     def do_marco(self):
-#         self._marcostart = time.clock()
-#         self.vip.pubsub.publish(peer='pubsub',
-#                                 topic=self._publish_to,
-#                                 message=self._send_message).get(timeout=2)
+            num_times = self.config.get('num-publishes', 5)
+            num_bytes = self.config.get('message-size-bytes', 1)
+            self.agent = MassPublisher(self, self.publish_to, datafile,
+                               num_bytes, num_times)
 #
-    @Core.receiver('onsetup')
-    def setup(self, sender, **kwargs):
-        if self._ismarco:
-            _log.debug('Configured as marco')
-            self._mass_publisher = MassPublisher(self)
-            self._mass_publisher.publish(self._publish_to, self._subscribe_to,
-                                         self._num_bytes, self._num_publishes,
-                                         self._completed)
-            gevent.spawn(self._mass_publisher.core.run)
+    @Core.receiver('onstart')
+    def startagent(self, sender, **kwargs):
+        gevent.spawn(self.agent.core.run)
 
-        if self._ispolo:
-            _log.debug('Configured as polo')
-            _log.debug('Subscribed to topic: \'{}\''.format(self._subscribe_to))
-            self.vip.pubsub.subscribe('pubsub',
-                                      self._subscribe_to,
-                                      self._onmessage)
-#
-    def _completed(self, statistics):
-        pprint(statistics)
-        self._mass_publisher.core.stop()
-
+    @Core.receiver('onstop')
+    def stopagent(self, sender, **kwargs):
+        self.agent.core.stop()
 
 def main(argv=sys.argv):
     '''Main method called by the eggsecutable.'''
     try:
-        utils.vip_main(MarcoPolo)
+        utils.vip_main(Scalability)
     except Exception as e:
         _log.exception('unhandled exception')
 

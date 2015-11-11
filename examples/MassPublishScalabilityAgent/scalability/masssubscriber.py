@@ -53,8 +53,10 @@
 
 #}}}
 
+from __future__ import absolute_import
+
+import json
 import logging
-from Queue import Queue
 import sys
 from time import clock
 
@@ -62,35 +64,48 @@ import gevent
 
 from volttron.platform.vip.agent import BasicAgent, Core, RPC
 from volttron.platform.agent import utils
-from gevent.core import callback
-
 
 utils.setup_logging()
 _log = logging.getLogger(__name__)
 
-class Polo(BasicAgent):
-    def __init__(self, parent, subtopic, pubtopic):
+class MassSubscriber(BasicAgent):
+
+    def __init__(self, parent, outputfile, subtopic):
+        super(MassSubscriber, self).__init__()
         self.parent = parent
         self.vip = parent.vip
-        super(Polo, self).__init__()
-        self.pubtopic = pubtopic
+        self.outputfile = outputfile
         self.subtopic = subtopic
 
-    @Core.receiver('onstart')
-    def startup(self, sender, **kwargs):
-        self.vip.pubsub.subscribe(peer='pubsub',
-                                  prefix=self.subtopic,
-                                  callback=self._onmessage)
+    def onmessage(self, peer, sender, bus, topic, headers, message):
+        '''Handle incoming messages on the bus.'''
+        finishtime=clock()
+        headers['finished']=finishtime
+        self.outstream.write("{}\n".format(json.dumps(headers)))
+        id = int(headers['idnum'])
+        if id >= self.num_messages-1:
+            self.vip.pubsub.publish(peer='pubsub',
+                                    topic='control/publisher',
+                                    message='complete')
+            self.parent.core.stop()
+        #_log.debug('Finishing {}'.format(len(message)))
+
+    def oncontrol(self, peer, sender, bus, topic, headers, message):
+        self.num_messages = int(message)
+        _log.debug('oncontrol: {}'.format(self.num_messages))
 
     @Core.receiver('onstop')
-    def stopping(self, sender, **kwargs):
-        _log.debug('stopping polo agent.')
-        self.kill()
+    def do_onstop(self, sender, **kwargs):
+        self.outstream.close()
 
-    def _onmessage(self, peer, sender, bus, topic, headers, message):
-        '''Handle incoming messages on the bus.'''
-        retmessage = {'clock': clock()}.extend(headers)
-        _log.debug('POLO publishing {}'.format(retmessage))
-        self.vip.pubsub.publish(peer='pubsub',
-                                topic=self.pubtopic,
-                                message=retmessage).get(timeout=2)
+    @Core.receiver('onstart')
+    def do_onstart(self, sender, **kwargs):
+        self.outstream = open(self.outputfile, 'w')
+        _log.debug('Subscribing to {}'.format(self.subtopic))
+        self.vip.pubsub.subscribe(peer='pubsub',
+                                  prefix = self.subtopic,
+                                  callback=self.onmessage)
+
+        self.vip.pubsub.subscribe(peer='pubsub',
+                                  prefix = 'control/subscriber',
+                                  callback=self.oncontrol)
