@@ -57,6 +57,7 @@ from __future__ import absolute_import
 
 import logging
 import os
+from pprint import pprint
 import sys
 from time import time
 
@@ -122,21 +123,24 @@ class Scalability(Agent):
 #
     @Core.receiver('onstart')
     def startagent(self, sender, **kwargs):
-        gevent.spawn(self.agent.core.run)
         if self._ispublisher:
             self.startagent = time()
             self.vip.rpc.call('control',
-                              'stats.enable').get(timeout=2)
+                              'stats.enable').get(timeout=10)
+        gevent.spawn(self.agent.core.run)
 
     @Core.receiver('onstop')
     def stopagent(self, sender, **kwargs):
         if self._ispublisher:
             self.stopagent = time()
             self.vip.rpc.call('control',
-                              'stats.disable').get(timeout=2)
+                              'stats.disable').get(timeout=10)
+            d = self.vip.rpc.call('control',
+                                  'stats.get').get(timeout=10)
             _log.debug('total time to publish {} msgs is {}'
                        .format(self.num_times,
                                self.stopagent- self.startagent))
+            pprint(d)
         self.agent.core.stop()
 
 def main(argv=sys.argv):
