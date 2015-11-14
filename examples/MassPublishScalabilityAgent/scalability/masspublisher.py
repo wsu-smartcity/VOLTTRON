@@ -107,7 +107,8 @@ class MassPub(Agent):
         for x in range(self.num_times):
             headers = {'idnum': x,
                        'sender': self.core.identity,
-                       'started': time()}
+                       'started': time(),
+                       'bytes-sent': len(built_bytes)}
             self.vip.pubsub.publish(peer='pubsub',
                                     headers=headers,
                                     topic=self.pubtopic,

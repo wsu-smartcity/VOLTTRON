@@ -109,8 +109,10 @@ class Scalability(Agent):
             task.kill()
 
     def _create_subscriber_thread(self, identity, address):
+        outfile=os.path.join(self.datadir, identity+'.txt')
         agent = MassSub(address=address, identity=identity,
-                        subtopic=self.subscribe_to)
+                        subtopic=self.subscribe_to, 
+                        outfile=outfile)
         task = gevent.spawn(agent.core.run)
         try:
             task.join()
@@ -165,7 +167,7 @@ class Scalability(Agent):
         self.config_as = self.config['config-as']
         self.publish_to = self.config.get('pubblish-to', None)
         self.subscribe_to = self.config.get('subscribe-to', None)
-        self.datafile = self.config.get('outfile', None)
+        self.datadir = self.config.get('datadir', None)
         address = self.config.get('address', None)
         self.num_agents = self.config.get('num_agents', 1)
         # in the if branch below we pass in either what is listed here or
@@ -187,14 +189,20 @@ class Scalability(Agent):
             raise Exception('Invalid publish-to in config file.')
         if self.config_as == 'subscriber' and not self.subscribe_to:
             raise Exception('Invalid subscribe-to in config file.')
-        if not self.datafile:
-            raise Exception('Invalid datafile passed.')
+        if self._issubscriber:
+            if not self.datadir:
+                raise Exception('Invalid datafile passed.')
+            try:
+                os.makedirs(self.datadir)
+            except:
+                pass
 
         _log.info("id: {} config-as: {} pub-to: {} sub-to: {}"
               .format(self.agent_id, self.config_as, self.publish_to,
                       self.subscribe_to))
-        datafile = os.path.join(os.environ['VOLTTRON_HOME'], self.datafile)
-        _log.debug("datafile is {}".format(datafile))
+        
+        #datafile = os.path.join(os.environ['VOLTTRON_HOME'], self.datafile)
+        #_log.debug("datafile is {}".format(datafile))
         self._threads = {}
         self._ready = set()
         

@@ -57,6 +57,7 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 import sys
 from time import time
 
@@ -73,9 +74,10 @@ class MassSub(Agent):
     def _getroot(self, id):
         return id[:-2]
     
-    def __init__(self, subtopic, **kwargs):
+    def __init__(self, subtopic, outfile, **kwargs):
         super(MassSub, self).__init__(**kwargs)
         self.subtopic=subtopic
+        self.outfile=outfile
         
     @Core.receiver('onsetup')
     def setup(self, sender, **kwargs):
@@ -86,16 +88,25 @@ class MassSub(Agent):
         _log.debug('Starting MassSub {} {}'.format(self.core.identity, self.subtopic))
         self.vip.pubsub.subscribe(peer='pubsub', prefix=self.subtopic, 
                                   callback=self.message_received)
+        if os.path.exists(self.outfile):
+            os.remove(self.outfile)
         self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', 
                           self.core.identity)
         
     @Core.receiver('onstop')
     def stopping(self, sender, **kwargs):
         _log.debug('Stopping MassSub {}'.format(self.core.identity))
+        self.outstream.close()
     
     def message_received(self, peer, sender, bus, topic, headers, message):
         _log.debug('message received of length {}'.format(len(message)))
-        
+        finishtime=time()
+        headers['bytes-received'] = len(message)
+        headers['finished']=finishtime
+        _log.debug(headers)
+        with open(self.outfile, 'a') as fout:
+            fout.write("{}\n".format(json.dumps(headers)))
+            
 class MassSubscriber(BasicAgent):
 
     def __init__(self, parent, outputfile, subtopic):
