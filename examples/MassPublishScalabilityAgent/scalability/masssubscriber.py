@@ -99,57 +99,9 @@ class MassSub(Agent):
         self.outstream.close()
     
     def message_received(self, peer, sender, bus, topic, headers, message):
-        _log.debug('message received of length {}'.format(len(message)))
         finishtime=time()
         headers['bytes-received'] = len(message)
         headers['finished']=finishtime
-        _log.debug(headers)
         with open(self.outfile, 'a') as fout:
             fout.write("{}\n".format(json.dumps(headers)))
             
-class MassSubscriber(BasicAgent):
-
-    def __init__(self, parent, outputfile, subtopic):
-        super(MassSubscriber, self).__init__()
-        self.parent = parent
-        self.vip = parent.vip
-        self.outputfile = outputfile
-        self.subtopic = subtopic
-
-    def onmessage(self, peer, sender, bus, topic, headers, message):
-        '''Handle incoming messages on the bus.'''
-        finishtime=time()
-        headers['finished']=finishtime
-        self.outstream.write("{}\n".format(json.dumps(headers)))
-        id = int(headers['idnum'])
-        if id >= self.num_messages-1:
-            self.vip.pubsub.publish(peer='pubsub',
-                                    topic='control/publisher',
-                                    message='complete')
-            self.outstream.write('End Receiving: {}\n'
-                             .format(time()))
-
-            self.parent.core.stop()
-        #_log.debug('Finishing {}'.format(len(message)))
-
-    def oncontrol(self, peer, sender, bus, topic, headers, message):
-        self.num_messages = int(message)
-        _log.debug('oncontrol: {}'.format(self.num_messages))
-        self.outstream.write('Begin Receiving: {} {}\n'
-                             .format(self.num_messages, time()))
-
-    @Core.receiver('onstop')
-    def do_onstop(self, sender, **kwargs):
-        self.outstream.close()
-
-    @Core.receiver('onstart')
-    def do_onstart(self, sender, **kwargs):
-        self.outstream = open(self.outputfile, 'w')
-        _log.debug('Subscribing to {}'.format(self.subtopic))
-        self.vip.pubsub.subscribe(peer='pubsub',
-                                  prefix = self.subtopic,
-                                  callback=self.onmessage)
-
-        self.vip.pubsub.subscribe(peer='pubsub',
-                                  prefix = 'control/subscriber',
-                                  callback=self.oncontrol)
