@@ -169,7 +169,7 @@ class Scalability(Agent):
         self.subscribe_to = self.config.get('subscribe-to', None)
         self.datadir = self.config.get('datadir', None)
         address = self.config.get('address', None)
-        self.num_agents = self.config.get('num_agents', 1)
+        self.num_agents = self.config.get('num-agents', 1)
         # in the if branch below we pass in either what is listed here or
         # the default publisher or subscriber depending on the context.
         identity = self.config.get('identity', kwargs.pop('identity'))
@@ -220,16 +220,26 @@ class Scalability(Agent):
             if len(self._ready) == len(self._threads):
                 self.start_work()
 
-    @Core.receiver('onstart')
-    def starting(self, sender, **kwargs):
+    @Core.receiver('onsetup')
+    def settingup(self, sender, **kwargs):
         self.vip.rpc.export(self.agent_ready, 'ready_to_work')
         
     @Core.receiver('onstart')
-    def startagent(self, sender, **kwargs):
+    def starting(self, sender, **kwargs):
+        '''Handle the start event of the agent.
+        
+        Starts up the sub agent threads.
+        '''
         self.create_agent_threads(self.core.identity,
                                    self.core.address)
 
     def start_work(self):
+        '''Start the publishing in all of the threads
+        
+        This function loops over the thread keys (the identities of
+        the sub agents) and calls the start_publishing method on each
+        of them.
+        '''
         for k in self._threads.keys():
             self.vip.rpc.call(peer=k, method='start_publishing')
 
