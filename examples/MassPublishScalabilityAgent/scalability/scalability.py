@@ -66,7 +66,7 @@ import gevent
 
 from . masspublisher import MassPub
 from . masspublisher import MassPublisher
-from . masssubscriber import MassSubscriber
+from . masssubscriber import MassSubscriber, MassSub
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
 from volttron.platform.messaging import headers as headers_mod
@@ -99,8 +99,8 @@ class Scalability(Agent):
         '''
         agent = MassPub(address=address, identity=identity,
                         pubtopic=self.publish_to, num_bytes=self.num_bytes,
-                        num_times=self.num_times,
-                        finished_callback=self._agent_finished)
+                        num_times=self.num_times)
+        
         task = gevent.spawn(agent.core.run)
         try:
             task.join()
@@ -108,7 +108,14 @@ class Scalability(Agent):
             task.kill()
 
     def _create_subscriber_thread(self, identity, address):
-        pass
+        agent = MassSub(address=address, identity=identity,
+                        subtopic=self.subscribe_to)
+        task = gevent.spawn(agent.core.run)
+        try:
+            task.join()
+        finally:
+            task.kill()
+
 
     def _agent_finished(self, identity):
         _log.debug('Agent {} finished'.format(identity))
@@ -141,8 +148,8 @@ class Scalability(Agent):
                 thread = self.core.spawn_in_thread(self._create_publisher_thread,
                                                    identity, address)
             else:
-                thread = Thread(target=self._create_subscriber_thread,
-                                args=[identity, address])
+                thread = self.core.spawn_in_thread(self._create_subscriber_thread,
+                                                   identity, address)
 
             # Make sure the thread dies when this the scalability agent dies.
 #             thread.daemon = True
@@ -190,10 +197,9 @@ class Scalability(Agent):
         _log.debug("datafile is {}".format(datafile))
         self._threads = {}
         self._ready = set()
-        if self._issubscriber:
-            self.agent = MassSubscriber(self, datafile,
-                                        self.subscribe_to)
-        else:
+        
+        # These parameters are only necessary for publishers.
+        if self._ispublisher:
             self.num_times = self.config.get('num-publishes', 5)
             self.num_bytes = self.config.get('message-size-bytes', 1)
 #             self.agent = MassPublisher(self, self.publish_to, datafile,
@@ -202,8 +208,9 @@ class Scalability(Agent):
     def agent_ready(self, identity):
         _log.debug('Agent {} is ready.'.format(identity))
         self._ready.add(identity)
-        if len(self._ready) == len(self._threads):
-            self.start_work()
+        if self._ispublisher:
+            if len(self._ready) == len(self._threads):
+                self.start_work()
 
     @Core.receiver('onstart')
     def starting(self, sender, **kwargs):
