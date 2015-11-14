@@ -97,6 +97,7 @@ class Scalability(Agent):
         will not block the main thread.  This function will spawn a configured
         MassPub agent.        
         '''
+        _log.debug('Creating MassPub {}'.format(identity))
         agent = MassPub(address=address, identity=identity,
                         pubtopic=self.publish_to, num_bytes=self.num_bytes,
                         num_times=self.num_times)
@@ -145,17 +146,16 @@ class Scalability(Agent):
             #increment so we have unique identities on the vip bus.
             identity = base_identity+'-{}'.format(x)
             if self._ispublisher:
-                thread = self.core.spawn_in_thread(self._create_publisher_thread,
-                                                   identity, address)
+                target = self._create_publisher_thread
             else:
-                thread = self.core.spawn_in_thread(self._create_subscriber_thread,
-                                                   identity, address)
-
+                target = self._create_subscriber_thread
+ 
+            thread = Thread(target=target, args=(identity, address))
             # Make sure the thread dies when this the scalability agent dies.
-#             thread.daemon = True
-#             thread.start()
+            thread.daemon = True
+            thread.start()
             self._threads[identity] = thread
-        _log.debug('Done creating threads.')
+        _log.debug('Done creating {} threads.'.format(len(self._threads)))
 
 
     def __init__(self, config_path, **kwargs):
