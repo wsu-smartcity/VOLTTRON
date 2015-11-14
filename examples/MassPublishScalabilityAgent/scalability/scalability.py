@@ -60,14 +60,17 @@ import os
 from pprint import pprint
 import sys
 from time import time
+from threading import Thread
 
 import gevent
 
+from . masspublisher import MassPub
 from . masspublisher import MassPublisher
 from . masssubscriber import MassSubscriber
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
 from volttron.platform.messaging import headers as headers_mod
+from twisted.test.test_pb import finishedCallback
 
 utils.setup_logging()
 _log = logging.getLogger(__name__)
@@ -87,14 +90,64 @@ class Scalability(Agent):
     def _issubscriber(self):
         return self.config_as == 'subscriber'
 
+    def _create_publisher_thread(self, identity, address):
+        agent = MassPub(address=address, identity=identity,
+                        pubtopic=self.publish_to, num_bytes=self.num_bytes,
+                        num_times=self.num_times,
+                        finished_callback=self._agent_finished)
+        task = gevent.spawn(agent.core.run)
+        try:
+            task.join()
+        finally:
+            task.kill()
+
+    def _create_subscriber_thread(self, identity, address):
+        pass
+
+    def _agent_finished(self, identity):
+        _log.debug('Agent {} finished'.format(identity))
+
+
+    def create_agent_threads(self, base_identity, address):
+
+        for x in range(self.num_agents):
+            #increment so we have unique identities on the vip bus.
+            identity = base_identity+'-{}'.format(x)
+            if self._ispublisher:
+                thread = Thread(target=self._create_publisher_thread,
+                                args=[identity, address])
+            else:
+                thread = Thread(target=self._create_subscriber_thread,
+                                args=[identity, address])
+
+            # Make sure the thread dies when this the scalability agent dies.
+            thread.daemon = True
+            thread.start()
+            self._threads[identity] = thread
+        _log.debug('Done creating threads.')
+
+
     def __init__(self, config_path, **kwargs):
-        super(Scalability, self).__init__(**kwargs)
+
         self.config = utils.load_config(config_path)
         self.agent_id = self.config['agentid']
         self.config_as = self.config['config-as']
         self.publish_to = self.config.get('pubblish-to', None)
         self.subscribe_to = self.config.get('subscribe-to', None)
         self.datafile = self.config.get('outfile', None)
+        address = self.config.get('address', None)
+        self.num_agents = self.config.get('num_agents', 1)
+        # in the if branch below we pass in either what is listed here or
+        # the default publisher or subscriber depending on the context.
+        identity = self.config.get('identity', kwargs.pop('identity'))
+        if not identity and self._ispublisher:
+            identity="masspublisher"
+        elif not identity and self._issubscriber:
+            identity="masssubscriber"
+
+
+        super(Scalability, self).__init__(address=address, identity=identity,
+                                              **kwargs)
 
         if self.config_as not in ('publisher', 'subscriber'):
             raise Exception('config-as must be either publisher '
@@ -111,23 +164,30 @@ class Scalability(Agent):
                       self.subscribe_to))
         datafile = os.path.join(os.environ['VOLTTRON_HOME'], self.datafile)
         _log.debug("datafile is {}".format(datafile))
+        self._threads = {}
         if self._issubscriber:
             self.agent = MassSubscriber(self, datafile,
                                         self.subscribe_to)
         else:
-            num_times = self.config.get('num-publishes', 5)
-            num_bytes = self.config.get('message-size-bytes', 1)
-            self.num_times = num_times
-            self.agent = MassPublisher(self, self.publish_to, datafile,
-                               num_bytes, num_times)
-#
+            self.num_times = self.config.get('num-publishes', 5)
+            self.num_bytes = self.config.get('message-size-bytes', 1)
+#             self.agent = MassPublisher(self, self.publish_to, datafile,
+#                                num_bytes, num_times)
+
     @Core.receiver('onstart')
     def startagent(self, sender, **kwargs):
-        if self._ispublisher:
-            self.startagent = time()
-            self.vip.rpc.call('control',
-                              'stats.enable').get(timeout=10)
-        gevent.spawn(self.agent.core.run)
+        self.create_agent_threads(self.core.identity,
+                                   self.core.address)
+        self.start_work()
+#          if self._ispublisher:
+#              self.startagent = time()
+#              self.vip.rpc.call('control',
+#                                'stats.enable').get(timeout=10)
+#          gevent.spawn(self.agent.core.run)
+
+    def start_work(self):
+        for k in self._threads.keys():
+            self.vip.rpc.call(peer=k, method='start_publishing').get(timeout=2)
 
     @Core.receiver('onstop')
     def stopagent(self, sender, **kwargs):

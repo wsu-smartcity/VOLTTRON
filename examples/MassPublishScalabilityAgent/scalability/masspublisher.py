@@ -62,12 +62,41 @@ from time import time
 
 import gevent
 
-from volttron.platform.vip.agent import BasicAgent, Core, RPC
+from volttron.platform.vip.agent import Agent, BasicAgent, Core, RPC
 from volttron.platform.agent import utils
 
 
 utils.setup_logging()
 _log = logging.getLogger(__name__)
+
+class MassPub(Agent):
+
+    def __init__(self, identity, pubtopic, num_bytes, num_times,
+                 finished_callback=None, address=None):
+        super(MassPub, self).__init__(identity=identity, address=address)
+
+        self.finished = True
+        self.started = False
+
+        self.finished_callback = finished_callback
+        self.pubtopic = pubtopic
+        self.num_times = num_times
+        self.num_bytes = num_bytes
+
+    @Core.receiver('onstart')
+    def on_start(self, sender, **kwargs):
+        _log.debug('Starting MassPub {}'.format(self.core.identity))
+        self.vip.rpc.export(self._start_publishing, 'start_publishing')
+
+    @Core.receiver('onstop')
+    def on_stop(self, sender, **kwargs):
+        _log.debug('Ending MassPub {}'.format(self.core.identity))
+
+    def _start_publishing(self):
+        _log.debug('Starting to publish from {}'.format(self.core.identity))
+
+
+
 
 class MassPublisher(BasicAgent):
 
