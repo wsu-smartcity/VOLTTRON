@@ -70,6 +70,9 @@ utils.setup_logging()
 _log = logging.getLogger(__name__)
 
 class MassPub(Agent):
+    
+    def _getroot(self, id):
+        return id[:-2]
 
     def __init__(self, identity, pubtopic, num_bytes, num_times,
                  finished_callback=None, address=None):
@@ -82,11 +85,18 @@ class MassPub(Agent):
         self.pubtopic = pubtopic
         self.num_times = num_times
         self.num_bytes = num_bytes
+        self.parent_id = self._getroot(identity)
 
+    @Core.receiver('onsetup')
+    def on_setup(self, sender, **kwargs):
+        _log.debug('Setting up MassPub')
+        self.vip.rpc.export(self._start_publishing, 'start_publishing')
+        
     @Core.receiver('onstart')
     def on_start(self, sender, **kwargs):
         _log.debug('Starting MassPub {}'.format(self.core.identity))
-        self.vip.rpc.export(self._start_publishing, 'start_publishing')
+        _log.debug('HELLO {}'.format(self.vip.hello().get(timeout=2)))
+        self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', self.core.identity)
 
     @Core.receiver('onstop')
     def on_stop(self, sender, **kwargs):

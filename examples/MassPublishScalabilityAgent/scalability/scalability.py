@@ -91,6 +91,12 @@ class Scalability(Agent):
         return self.config_as == 'subscriber'
 
     def _create_publisher_thread(self, identity, address):
+        '''Starts an agent in the current thread.
+        
+        This function should be called from a secondary thread so that it
+        will not block the main thread.  This function will spawn a configured
+        MassPub agent.        
+        '''
         agent = MassPub(address=address, identity=identity,
                         pubtopic=self.publish_to, num_bytes=self.num_bytes,
                         num_times=self.num_times,
@@ -109,20 +115,38 @@ class Scalability(Agent):
 
 
     def create_agent_threads(self, base_identity, address):
-
+        '''Creates a agents separate threads so they can run independently.
+        
+        Loop over the number of agents specified in the configuration file. 
+        For each index append -x to the end of base_identity to produce a
+        'known' identity that we can communicate with the agent later on.
+        
+        The base_identity should be assumed to be *this* agent's identity.
+        
+        The generated identities are stored as the keys in the _threads 
+        dictionary for later use.  The value of the _threads dictionary 
+        will be the actual thread.
+        
+        parameters:
+            base_identity - A string (should be the identity of *this* agent)
+            address - The bus to connect the threaded agents to.  This 
+                      address currently should be the same address that *this*
+                      agent is connected to.
+                      
+        '''
         for x in range(self.num_agents):
             #increment so we have unique identities on the vip bus.
             identity = base_identity+'-{}'.format(x)
             if self._ispublisher:
-                thread = Thread(target=self._create_publisher_thread,
-                                args=[identity, address])
+                thread = self.core.spawn_in_thread(self._create_publisher_thread,
+                                                   identity, address)
             else:
                 thread = Thread(target=self._create_subscriber_thread,
                                 args=[identity, address])
 
             # Make sure the thread dies when this the scalability agent dies.
-            thread.daemon = True
-            thread.start()
+#             thread.daemon = True
+#             thread.start()
             self._threads[identity] = thread
         _log.debug('Done creating threads.')
 
@@ -165,6 +189,7 @@ class Scalability(Agent):
         datafile = os.path.join(os.environ['VOLTTRON_HOME'], self.datafile)
         _log.debug("datafile is {}".format(datafile))
         self._threads = {}
+        self._ready = set()
         if self._issubscriber:
             self.agent = MassSubscriber(self, datafile,
                                         self.subscribe_to)
@@ -174,11 +199,21 @@ class Scalability(Agent):
 #             self.agent = MassPublisher(self, self.publish_to, datafile,
 #                                num_bytes, num_times)
 
+    def agent_ready(self, identity):
+        _log.debug('Agent {} is ready.'.format(identity))
+        self._ready.add(identity)
+        if len(self._ready) == len(self._threads):
+            self.start_work()
+
+    @Core.receiver('onstart')
+    def starting(self, sender, **kwargs):
+        self.vip.rpc.export(self.agent_ready, 'ready_to_work')
+        
     @Core.receiver('onstart')
     def startagent(self, sender, **kwargs):
         self.create_agent_threads(self.core.identity,
                                    self.core.address)
-        self.start_work()
+#        self.start_work()
 #          if self._ispublisher:
 #              self.startagent = time()
 #              self.vip.rpc.call('control',
@@ -187,7 +222,9 @@ class Scalability(Agent):
 
     def start_work(self):
         for k in self._threads.keys():
-            self.vip.rpc.call(peer=k, method='start_publishing').get(timeout=2)
+            print('pinging key: {}'.format(k))
+            print(self.vip.ping(k).get(timeout=5))
+            self.vip.rpc.call(peer=k, method='start_publishing')
 
     @Core.receiver('onstop')
     def stopagent(self, sender, **kwargs):
