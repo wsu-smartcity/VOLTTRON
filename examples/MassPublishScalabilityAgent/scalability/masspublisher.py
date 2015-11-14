@@ -74,8 +74,7 @@ class MassPub(Agent):
     def _getroot(self, id):
         return id[:-2]
 
-    def __init__(self, identity, pubtopic, num_bytes, num_times,
-                 finished_callback=None, address=None):
+    def __init__(self, identity, pubtopic, num_bytes, num_times, address=None):
         super(MassPub, self).__init__(identity=identity, address=address)
 
         self.finished = True
@@ -88,18 +87,19 @@ class MassPub(Agent):
         self.parent_id = self._getroot(identity)
 
     @Core.receiver('onsetup')
-    def on_setup(self, sender, **kwargs):
+    def setup(self, sender, **kwargs):
         _log.debug('Setting up MassPub')
         self.vip.rpc.export(self._start_publishing, 'start_publishing')
         
-    @Core.receiver('onstart')
-    def on_start(self, sender, **kwargs):
+    @Core.receiver('onstart') 
+    def starting(self, sender, **kwargs):
         _log.debug('Starting MassPub {}'.format(self.core.identity))
         _log.debug('HELLO {}'.format(self.vip.hello().get(timeout=2)))
-        self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', self.core.identity)
+        self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', 
+                          self.core.identity)
 
     @Core.receiver('onstop')
-    def on_stop(self, sender, **kwargs):
+    def stopping(self, sender, **kwargs):
         _log.debug('Ending MassPub {}'.format(self.core.identity))
 
     def _start_publishing(self):
