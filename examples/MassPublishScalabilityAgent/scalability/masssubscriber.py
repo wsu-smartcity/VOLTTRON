@@ -62,12 +62,37 @@ from time import time
 
 import gevent
 
-from volttron.platform.vip.agent import BasicAgent, Core, RPC
+from volttron.platform.vip.agent import Agent, BasicAgent, Core, RPC
 from volttron.platform.agent import utils
 
 utils.setup_logging()
 _log = logging.getLogger(__name__)
 
+class MassSub(Agent):
+    
+    def _getroot(self, id):
+        return id[:-2]
+    
+    def __init__(self, subtopic, **kwargs):
+        super(MassSub, self).__init__(**kwargs)
+        self.subtopic=subtopic
+        
+    @Core.receiver('onsetup')
+    def setup(self, sender, **kwargs):
+        _log.debug('Seting up MassSub')
+        
+    @Core.receiver('onstart')
+    def starting(self, sender, **kwargs):
+        _log.debug('Starting MassSub {} {}'.format(self.core.identity, self.subtopic))
+        self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', self.core.identity)
+        
+    @Core.receiver('onstop')
+    def stopping(self, sender, **kwargs):
+        _log.debug('Stopping MassSub {}'.format(self.core.identity))
+    
+    def message_received(self, peer, sender, bus, topic, headers, message):
+        _log.debug('message received')
+        
 class MassSubscriber(BasicAgent):
 
     def __init__(self, parent, outputfile, subtopic):
