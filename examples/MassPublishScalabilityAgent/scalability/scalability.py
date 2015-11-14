@@ -228,17 +228,9 @@ class Scalability(Agent):
     def startagent(self, sender, **kwargs):
         self.create_agent_threads(self.core.identity,
                                    self.core.address)
-#        self.start_work()
-#          if self._ispublisher:
-#              self.startagent = time()
-#              self.vip.rpc.call('control',
-#                                'stats.enable').get(timeout=10)
-#          gevent.spawn(self.agent.core.run)
 
     def start_work(self):
         for k in self._threads.keys():
-            print('pinging key: {}'.format(k))
-            print(self.vip.ping(k).get(timeout=5))
             self.vip.rpc.call(peer=k, method='start_publishing')
 
     @Core.receiver('onstop')

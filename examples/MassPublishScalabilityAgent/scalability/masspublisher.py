@@ -93,7 +93,6 @@ class MassPub(Agent):
     @Core.receiver('onstart') 
     def starting(self, sender, **kwargs):
         _log.debug('Starting MassPub {}'.format(self.core.identity))
-        _log.debug('HELLO {}'.format(self.vip.hello().get(timeout=2)))
         self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', 
                           self.core.identity)
 
