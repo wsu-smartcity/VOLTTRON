@@ -84,14 +84,17 @@ class MassSub(Agent):
     @Core.receiver('onstart')
     def starting(self, sender, **kwargs):
         _log.debug('Starting MassSub {} {}'.format(self.core.identity, self.subtopic))
-        self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', self.core.identity)
+        self.vip.pubsub.subscribe(peer='pubsub', prefix=self.subtopic, 
+                                  callback=self.message_received)
+        self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', 
+                          self.core.identity)
         
     @Core.receiver('onstop')
     def stopping(self, sender, **kwargs):
         _log.debug('Stopping MassSub {}'.format(self.core.identity))
     
     def message_received(self, peer, sender, bus, topic, headers, message):
-        _log.debug('message received')
+        _log.debug('message received of length {}'.format(len(message)))
         
 class MassSubscriber(BasicAgent):
 

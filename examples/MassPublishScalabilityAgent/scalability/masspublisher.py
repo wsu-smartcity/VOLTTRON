@@ -80,7 +80,6 @@ class MassPub(Agent):
         self.finished = True
         self.started = False
 
-        self.finished_callback = finished_callback
         self.pubtopic = pubtopic
         self.num_times = num_times
         self.num_bytes = num_bytes
@@ -104,6 +103,15 @@ class MassPub(Agent):
 
     def _start_publishing(self):
         _log.debug('Starting to publish from {}'.format(self.core.identity))
+        built_bytes = '1'*self.num_bytes
+        for x in range(self.num_times):
+            headers = {'idnum': x,
+                       'sender': self.core.identity,
+                       'started': time()}
+            self.vip.pubsub.publish(peer='pubsub',
+                                    headers=headers,
+                                    topic=self.pubtopic,
+                                    message=built_bytes)
 
 
 
