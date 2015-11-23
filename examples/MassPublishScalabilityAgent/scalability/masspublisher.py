@@ -65,6 +65,8 @@ import gevent
 from volttron.platform.vip.agent import Agent, BasicAgent, Core, RPC
 from volttron.platform.agent import utils
 
+from . masspub import masspub
+
 
 utils.setup_logging()
 _log = logging.getLogger(__name__)
@@ -96,6 +98,12 @@ class MassPub(Agent):
         self.vip.rpc.call(self._getroot(self.core.identity), 'ready_to_work', 
                           self.core.identity)
 
+    def _complete_publishing(self):
+        _log.debug('Completed publishing!')
+        self.vip.rpc.call(self._getroot(self.core.identity), 'agent_finished', 
+                          self.core.identity)
+        self.core.stop()
+        
     @Core.receiver('onstop')
     def stopping(self, sender, **kwargs):
         _log.debug('Ending MassPub {}'.format(self.core.identity))
@@ -103,12 +111,15 @@ class MassPub(Agent):
     def _start_publishing(self):
         _log.debug('Starting to publish from {}'.format(self.core.identity))
         built_bytes = '1'*self.num_bytes
-        for x in range(self.num_times):
-            headers = {'idnum': x,
-                       'sender': self.core.identity,
-                       'started': time(),
-                       'bytes-sent': len(built_bytes)}
-            self.vip.pubsub.publish(peer='pubsub',
-                                    headers=headers,
-                                    topic=self.pubtopic,
-                                    message=built_bytes)
+        masspub(self.vip, self.core.identity, built_bytes, self.num_times,
+                 topic='marco', complete_callback=self._complete_publishing)
+    
+#         for x in range(self.num_times):
+#             headers = {'idnum': x,
+#                        'sender': self.core.identity,
+#                        'started': time(),
+#                        'bytes-sent': len(built_bytes)}
+#             self.vip.pubsub.publish(peer='pubsub',
+#                                     headers=headers,
+#                                     topic=self.pubtopic,
+#                                     message=built_bytes)

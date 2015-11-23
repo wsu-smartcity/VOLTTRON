@@ -65,8 +65,7 @@ from threading import Thread
 import gevent
 
 from . masspublisher import MassPub
-from . masspublisher import MassPublisher
-from . masssubscriber import MassSubscriber, MassSub
+from . masssubscriber import MassSub
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
 from volttron.platform.messaging import headers as headers_mod
@@ -122,7 +121,17 @@ class Scalability(Agent):
 
     def _agent_finished(self, identity):
         _log.debug('Agent {} finished'.format(identity))
+        self._trimthreads()
 
+    def _trimthreads(self):
+        keys = self._threads.keys()
+        
+        for k in keys:
+            if not self._threads[k].isAlive():
+                del(self._threads[k])
+        
+        if len(self._threads) == 0:
+            self.core.stop()
 
     def create_agent_threads(self, base_identity, address):
         '''Creates a agents separate threads so they can run independently.
@@ -223,6 +232,7 @@ class Scalability(Agent):
     @Core.receiver('onsetup')
     def settingup(self, sender, **kwargs):
         self.vip.rpc.export(self.agent_ready, 'ready_to_work')
+        self.vip.rpc.export(self._agent_finished, 'agent_finished')
         
     @Core.receiver('onstart')
     def starting(self, sender, **kwargs):
@@ -251,11 +261,11 @@ class Scalability(Agent):
                               'stats.disable').get(timeout=10)
             d = self.vip.rpc.call('control',
                                   'stats.get').get(timeout=10)
-            _log.debug('total time to publish {} msgs is {}'
-                       .format(self.num_times,
-                               self.stopagent- self.startagent))
+#             _log.debug('total time to publish {} msgs is {}'
+#                        .format(self.num_times,
+#                                self.stopagent- self.startagent))
             pprint(d)
-        self.agent.core.stop()
+        #self.core.stop()
 
 def main(argv=sys.argv):
     '''Main method called by the eggsecutable.'''
