@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo $CWD
+
 python bootstrap.py
 
 . env/bin/activate
