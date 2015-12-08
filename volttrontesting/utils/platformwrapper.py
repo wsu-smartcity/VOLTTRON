@@ -219,10 +219,11 @@ class PlatformWrapper():
 
         pparams = [VSTART, "-c", pconfig, "-vv", "-l", lfile]
         print("PARAMS: ", pparams)
-        
+        print("VOLTTRON_ROOT", VOLTTRON_ROOT)
         print('FILES exist?')
         print(os.path.exists(VSTART))
         print(os.path.exists(pconfig))
+        print(os.path.exists(VOLTTRON_ROOT))
 
         self._p_process = subprocess.Popen(pparams, env=self.env)
 
