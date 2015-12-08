@@ -13,7 +13,7 @@ language: python
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y build-essential python-dev openssl libssl-dev libevent-dev
+  - sudo apt-get install -y tree build-essential python-dev openssl libssl-dev libevent-dev
 
 install: 
   - python2 bootstrap.py
