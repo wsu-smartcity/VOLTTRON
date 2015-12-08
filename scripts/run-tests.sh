@@ -1,7 +1,5 @@
 #!/bin/sh
 
-deactivate
-
 echo $CWD
 
 python bootstrap.py
