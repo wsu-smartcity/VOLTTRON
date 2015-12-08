@@ -224,6 +224,9 @@ class PlatformWrapper():
         print(os.path.exists(VSTART))
         print(os.path.exists(pconfig))
         print(os.path.exists(VOLTTRON_ROOT))
+        print(os.path.exists(VOLTTRON_ROOT+"/env"))
+        print(os.path.exists(VOLTTRON_ROOT+"/env/bin"))
+        print(os.path.exists(VOLTTRON_ROOT+"/env/bin/activate"))
 
         self._p_process = subprocess.Popen(pparams, env=self.env)
 
