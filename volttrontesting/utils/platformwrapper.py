@@ -220,6 +220,7 @@ class PlatformWrapper():
         pparams = [VSTART, "-c", pconfig, "-vv", "-l", lfile]
         print("PARAMS: ", pparams)
         print("VOLTTRON_ROOT", VOLTTRON_ROOT)
+        print("VSTART", VSTART)
         print('FILES exist?')
         print(os.path.exists(VSTART))
         print(os.path.exists(pconfig))
