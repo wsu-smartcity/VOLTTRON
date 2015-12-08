@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo $CWD
+export CI=travis
 
 # The context should already have been activated at this point.
 tree .
