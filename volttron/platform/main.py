@@ -609,6 +609,7 @@ def main(argv=sys.argv):
                    monitor=opts.monitor, tracker=tracker).run()
         except Exception:
             _log.exception('Unhandled exception in router loop')
+            raise
         finally:
             stop()
 
@@ -628,6 +629,10 @@ def main(argv=sys.argv):
         thread = threading.Thread(target=router, args=(auth.core.stop,))
         thread.daemon = True
         thread.start()
+
+        gevent.sleep(0.1)
+        if not thread.isAlive():
+            sys.exit()
 
         # Launch additional services and wait for them to start before
         # auto-starting agents
