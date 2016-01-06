@@ -98,22 +98,22 @@ def subscriber():
     while True:
         print sub.recv_multipart()
 
-@pytest.mark.slow        
+@pytest.mark.slow
 @pytest.mark.zmq
 def test_broker():
     pub = zmq.Socket(ctx, zmq.PUB)
     pull = zmq.Socket(ctx, zmq.PULL)
     pub.bind('ipc:///tmp/volttron-platform-agent-subscribe')
     pull.bind('ipc:///tmp/volttron-platform-agent-publish')
-    
+
     pub.send_multipart(['topic1', 'Hello world1'])
-    time.sleep(2)
+    time.sleep(.5)
     pub.send_multipart(['foo', 'bar'])
-    time.sleep(2)
+    time.sleep(.5)
     pub.send_multipart(['topic2', 'Goodbye'])
-    time.sleep(2)
+    time.sleep(.5)
     pub.send_multipart(['platform', 'Hello from platform'])
-    time.sleep(2)
+    time.sleep(.5)
     pub.send_multipart(['platform.shutdown', 'Goodbye'])
 
 if __name__ == '__main__':
