@@ -282,7 +282,7 @@ def historian(config_path, **kwargs):
         def historian_setup(self):
             self.__connection = None
             self.__connect_params = connection['params']
-            mongo_uri = "mongodb://{user}:{passwd}@{host}:{port}/{database}".format(**self.__connect_params)
+            mongo_uri = "mongodb://{host}:{port}/{database}".format(**self.__connect_params)
             if 'replicaset' in self.__connect_params:
                 _log.debug('connecting to replicaset: {}'.format(self.__connect_params['replicaset']))
                 self.__connection = pymongo.MongoClient(mongo_uri,
