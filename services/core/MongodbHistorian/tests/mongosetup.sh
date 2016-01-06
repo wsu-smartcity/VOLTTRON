@@ -9,8 +9,8 @@ echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.0 multiverse" 
 
 sudo apt-get update
 
-sudo apt-get install -y -f mongodb-org=3.0 mongodb-org-shell=3.0 \
-    mongodb-org-server=3.0 mongodb-org-mongos=3.0 mongodb-org-tools=3.0
+sudo apt-get install -y -f mongodb-org=3.0.8 mongodb-org-shell=3.0.8 \
+    mongodb-org-server=3.0.8 mongodb-org-mongos=3.0.8 mongodb-org-tools=3.0.8
 
 echo "mongodb-org hold" | sudo dpkg --set-selections
 echo "mongodb-org-server hold" | sudo dpkg --set-selections
