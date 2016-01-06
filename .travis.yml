@@ -23,7 +23,7 @@ before_script:
   - tar -xvf /tmp/mongodb.tgz
   - mkdir /tmp/data
   - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
-  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo < services/coreMongodbHistorian/tests/mongodb.init.js
+  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo < ./services/core/MongodbHistorian/tests/mongodb.init.js
 
 script: scripts/run-tests.sh
 
