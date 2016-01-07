@@ -18,18 +18,16 @@ before_install:
   - sudo apt-get install -y build-essential python-dev openssl libssl-dev libevent-dev
   - python setup.py install
 
-<<<<<<< HEAD
 before_script:
   - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.8.tgz -O /tmp/mongodb.tgz
   - tar -xvf /tmp/mongodb.tgz
   - mkdir /tmp/data
   - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
-  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo admin --eval 'db.createUser( {user: "mongodbadmin", pwd: "V3admin", roles: [ { role: "userAdminAnyDatabase", db: "admin" }]});'
-  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval 'db.createUser( {user: "test", pwd: "test", roles: [ { role: "readWrite", db: "mongo_test" }]});'
-=======
+  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo admin --eval ''db.createUser( {user: "mongodbadmin", pwd: "V3admin", roles: [ { role: "userAdminAnyDatabase", db: "admin" }]});''
+  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval ''db.createUser( {user: "test", pwd: "test", roles: [ { role: "readWrite", db: "mongo_test" }]});''
+
 install:
   - python2 bootstrap.py
->>>>>>> develop
 
 script: scripts/run-tests.sh
 
