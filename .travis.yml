@@ -23,8 +23,10 @@ before_script:
   - tar -xvf /tmp/mongodb.tgz
   - mkdir /tmp/data
   - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
-  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo admin --eval ''db.createUser( {user: "mongodbadmin", pwd: "V3admin", roles: [ { role: "userAdminAnyDatabase", db: "admin" }]});''
-  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval ''db.createUser( {user: "test", pwd: "test", roles: [ { role: "readWrite", db: "mongo_test" }]});''
+  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo admin --eval 'db.createUser({"user":"mongodbadmin", "pwd":"V3admin", roles:[{"role":userAdminAnyDatabase", "db":"admin"}]})'
+  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval 'db.createUser({user:"test", pwd:"test", roles:[{role:"readWrite", db:"mongo_test" }]});'
+  #''db.createUser( {user: ""mongodbadmin", pwd: "V3admin", roles: [ { role: "userAdminAnyDatabase", db: "admin" }]});''
+  #- ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval ''db.createUser( {user: "test", pwd: "test", roles: [ { role: "readWrite", db: "mongo_test" }]});''
 
 install:
   - python2 bootstrap.py
