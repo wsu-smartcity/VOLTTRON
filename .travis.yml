@@ -10,22 +10,51 @@ language: python
 #    - openssl
 #    - libssl-dev
 #    - libevent-dev
+# services:
+#   - mongodb
+
 services:
-  - mongodb
+- mongodb
+addons:
+  apt:
+    sources:
+    - mongodb-3.0-precise
+    packages:
+    - mongodb-org-server
 
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y build-essential python-dev openssl libssl-dev libevent-dev
   - python setup.py install
+  #- ./services/core/MongodbHistorian/tests/mongosetup.sh
+# before_script:
+#   - ./services/core/MongodbHistorian/tests/mongosetup.sh
+#before_script:
+  # - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.8.tgz -O /tmp/mongodb.tgz
+  # - tar -xvf /tmp/mongodb.tgz
+  # - mkdir /tmp/data
+  #- mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
+  #- mongo admin --eval 'db.createUser({user:"mongodbadmin", pwd:"V3admin", roles:[{role:"userAdminAnyDatabase", db:"admin"}]})'
+  #- mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval 'db.createUser({user:"test", pwd:"test", roles:[{role:"readWrite", db:"mongo_test" }]});'
+  #''db.createUser( {user: ""mongodbadmin", pwd: "V3admin", roles: [ { role: "userAdminAnyDatabase", db: "admin" }]});''
+  #- ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval ''db.createUser( {user: "test", pwd: "test", roles: [ { role: "readWrite", db: "mongo_test" }]});''
 
-before_script:
-  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.8.tgz -O /tmp/mongodb.tgz
-  - tar -xvf /tmp/mongodb.tgz
-  - mkdir /tmp/data
-  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
-  - ${PWD}/mongodb-linux-x86_64-3.0.8/bin/mongo < ./services/core/MongodbHistorian/tests/mongodb.init.js
+install:
+  - python2 bootstrap.py
 
 script: scripts/run-tests.sh
+
+notifications:
+  email:
+    craig.allwardt@pnnl.gov
+    zachary.beech@pnnl.gov
+    jereme.haack@pnnl.gov
+    kyle.monson@pnnl.gov
+    joseph.chapman@pnnl.gov
+    poorva.sharma@pnnl.gov
+    michael.roup@pnnl.gov
+    bora.akyol@pnnl.gov
+    robert.lutes@pnnl.gov
 
 #language: python
 #matrix:
