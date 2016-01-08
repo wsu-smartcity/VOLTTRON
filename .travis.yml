@@ -1,5 +1,7 @@
 language: python
 
+sudo: required
+dist: trusty
 #sudo: false
 
 #addons:
@@ -12,19 +14,21 @@ language: python
 #    - libevent-dev
 # services:
 #   - mongodb
-addons:
-  apt:
-    sources:
-    - mongodb-3.0-precise
-    packages:
-    - mongodb-org-server
+# addons:
+#   apt:
+#     sources:
+#     - mongodb-3.0-precise
+#     packages:
+#     - mongodb-org-server
 
 before_install:
   - sudo apt-get update -qq
+  - ./services/core/MongodbHistorian/tests/mongosetup.sh
   - sudo apt-get install -y build-essential python-dev openssl libssl-dev libevent-dev
   - python setup.py install
-  # Start the mongod server using auth option. 
-  - mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
+
+  # Start the mongod server using auth option.
+  #- mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
 #
 # before_script:
 #   - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.0.8.tgz -O /tmp/mongodb.tgz
