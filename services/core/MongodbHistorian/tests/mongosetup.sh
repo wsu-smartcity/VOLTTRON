@@ -20,7 +20,11 @@ echo "mongodb-org-tools hold" | sudo dpkg --set-selections
 
 sudo service mongod stop
 
+
 mongod -f ./services/core/MongodbHistorian/tests/mongod.conf --auth --dbpath /tmp/data --bind_ip 127.0.0.1  &> /dev/null &
+echo "Starting up mongod process."
+sleep 2
+ps aux|grep mongod
 #sudo cp ./services/core/MongodbHistorian/tests/mongod.conf /etc/mongod.conf
 #sudo chown root.root /etc/mongod.conf
 
