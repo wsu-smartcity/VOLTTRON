@@ -29,7 +29,7 @@ mongo_platform = {
             "port": 27017,
             "database": "mongo_test",
             "user": "test",
-            "passwd": "mongo_test_pw"
+            "passwd": "test"
         }
     }
 }
