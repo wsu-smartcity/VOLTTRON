@@ -157,7 +157,7 @@ def connect_sqlite(agent_uuid, request, volttron_instance1):
     db_name = request.param['connection']['params']['database']
     database_path = path.join(volttron_instance1.volttron_home,
                               'agents', agent_uuid,
-                              'sqlhistorianagent-3.0.1/sqlhistorianagent-3.0.1.agent-data/data',
+                              'sqlhistorianagent-3.0.2/sqlhistorianagent-3.0.2.agent-data/data',
                               db_name)
     print "connecting to sqlite path " + database_path
     db_connection = sqlite3.connect(database_path)
