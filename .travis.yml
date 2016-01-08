@@ -10,8 +10,14 @@ language: python
 #    - openssl
 #    - libssl-dev
 #    - libevent-dev
-services:
-  - mongodb
+# services:
+#   - mongodb
+addons:
+  apt:
+    sources:
+    - mongodb-3.0-precise
+    packages:
+    - mongodb-org-server
 
 before_install:
   - sudo apt-get update -qq
