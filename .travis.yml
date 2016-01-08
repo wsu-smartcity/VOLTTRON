@@ -23,10 +23,10 @@ dist: trusty
 
 before_install:
   - sudo apt-get update -qq
-  - ./services/core/MongodbHistorian/tests/mongosetup.sh
   - sudo apt-get install -y build-essential python-dev openssl libssl-dev libevent-dev
   # Travis-ci already creates a virtualenv to put our stuff in.
   - python setup.py install
+  - ./services/core/MongodbHistorian/tests/mongosetup.sh
   - python bootstrap.py --mongodb --testing
   # Start the mongod server using auth option.
   #- mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
