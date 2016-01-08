@@ -10,5 +10,9 @@
     "--testing": {
         "help": "Installs testing infrastructure dependencies",
         "packages": ["pytest>=2.8,<3", "pytest-bdd>=2.14,<3"]
+    },
+    "--mongodb": {
+        "help":  "Installs pymongo and it's dependencies. ",
+        "packages": ["pymongo"]
     }
 }
