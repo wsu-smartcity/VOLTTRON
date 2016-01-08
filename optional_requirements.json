@@ -1,11 +1,15 @@
 {
     "--platform": {
-        "help": "Installs requirements for volttron central",
-        "packages": ["psutil"] 
+        "help": "Installs requirements for platforms",
+        "packages": ["psutil"]
     },
     "--vc": {
         "help": "Installs requirements for volttron central",
         "packages": ["tornado>4,<5", "ply"]
+    },
+    "--mongodb": {
+        "help": "Installs requirements for pymongo",
+        "packages": ["pymongo>3.0,<3.2"]
     },
     "--pandas": {
         "help": "Installs numpy and pandas for applications",
