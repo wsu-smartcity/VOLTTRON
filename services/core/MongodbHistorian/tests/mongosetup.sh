@@ -23,6 +23,8 @@ sudo chown root.root /etc/mongod.conf
 sudo service mongod stop
 sudo rm -rf /var/lib/mongo
 sudo service mongod start
+sudo service mongod status
+
 # Create users for the database.
 mongo admin --eval 'db.createUser( {user: "mongodbadmin", pwd: "V3admin", roles: [ { role: "userAdminAnyDatabase", db: "admin" }]});'
 mongo mongo_test -u mongodbadmin -p V3admin --authenticationDatabase admin --eval 'db.createUser( {user: "test", pwd: "test", roles: [ { role: "readWrite", db: "mongo_test" }]});'
