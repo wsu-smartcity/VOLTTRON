@@ -63,17 +63,13 @@ from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
 from volttron.platform.messaging import headers as headers_mod
 
-from . import settings
-
 
 utils.setup_logging()
 _log = logging.getLogger(__name__)
 
 
 class ListenerAgent(Agent):
-    '''Listens to everything and publishes a heartbeat according to the
-    heartbeat period specified in the settings module.
-    '''
+    '''Listens to everything.'''
 
     def __init__(self, config_path, **kwargs):
         super(ListenerAgent, self).__init__(**kwargs)
@@ -94,22 +90,6 @@ class ListenerAgent(Agent):
         _log.debug(
             "Peer: %r, Sender: %r:, Bus: %r, Topic: %r, Headers: %r, "
             "Message: %r", peer, sender, bus, topic, headers, message)
-
-    # Demonstrate periodic decorator and settings access
-    @Core.periodic(settings.HEARTBEAT_PERIOD)
-    def publish_heartbeat(self):
-        '''Send heartbeat message every HEARTBEAT_PERIOD seconds.
-
-        HEARTBEAT_PERIOD is set and can be adjusted in the settings module.
-        '''
-        now = datetime.utcnow().isoformat(' ') + 'Z'
-        headers = {
-            'AgentID': self._agent_id,
-            headers_mod.CONTENT_TYPE: headers_mod.CONTENT_TYPE.PLAIN_TEXT,
-            headers_mod.DATE: now,
-        }
-        self.vip.pubsub.publish(
-            'pubsub', 'heartbeat/listeneragent', headers, now)
 
 
 def main(argv=sys.argv):
