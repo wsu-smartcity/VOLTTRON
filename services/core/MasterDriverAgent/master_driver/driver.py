@@ -78,6 +78,8 @@ class DriverAgent(BasicAgent):
     def __init__(self, parent, config_name, **kwargs):             
         super(DriverAgent, self).__init__(**kwargs)
         self.heart_beat_value = 0
+        self.locked = False
+        self.lock_end_event = None
         self.device_name = ''
         #Use the parent's vip connection
         self.parent = parent
@@ -129,6 +131,10 @@ class DriverAgent(BasicAgent):
         self.publish_breadth_first_all = config.get("publish_breadth_first_all", True) 
         self.publish_depth_first = config.get("publish_depth_first", True) 
         self.publish_breadth_first = config.get("publish_breadth_first", True) 
+        
+        min_lockout = self.config.get("min_lockout", 120)
+        
+        self.min_lockout = datetime.timedelta(seconds = min_lockout)
                            
         self.interface = self.get_interface(driver_type, driver_config, registry_config)
         self.meta_data = {}
@@ -164,6 +170,17 @@ class DriverAgent(BasicAgent):
                                    point='')
         
         self.parent.device_startup_callback(self.device_name, self)
+        
+    def lock_device(self, timeout):
+        if self.lock_end_event is not None:
+            self.lock_end_event.cancel()
+         
+        now = datetime.datetime.now()   
+        lockout_timeout = now + self.min_lockout
+        self.lock_end_event = self.core.schedule(lockout_timeout, self.cancel_lockout)   
+        
+    def cancel_lockout(self):         
+        self.locked = False
             
         
     def periodic_read(self):
